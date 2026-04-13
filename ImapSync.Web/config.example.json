@@ -1,0 +1,8 @@
+{
+  "port": 5000,
+  "sessionSecret": "CHANGE_THIS_TO_A_LONG_RANDOM_SECRET",
+  "mailboxesJsonPath": "../ImapSync.Worker/mailboxes.json",
+  "logDir": "./logs",
+  "restartCommand": "systemctl restart {service}",
+  "workerLogPath": ""
+}

@@ -1,0 +1,36 @@
+{
+  "SyncSettings": {
+    "StateFilePath": "sync-state.json",
+    "ErrorNotification": {
+      "Host": "smtp.example.com",
+      "Port": 587,
+      "UseSsl": false,
+      "Username": "imap-sync@example.com",
+      "Password": "CHANGE_ME",
+      "From": "imap-sync@example.com",
+      "To": "admin@example.com"
+    },
+    "MailboxPairs": [
+      {
+        "Name": "user@example.com",
+        "IntervalMinutes": 5,
+        "Source": {
+          "Host": "imap.source.com",
+          "Port": 993,
+          "UseSsl": true,
+          "Username": "user@source.com",
+          "Password": "CHANGE_ME"
+        },
+        "Destinations": [
+          {
+            "Host": "imap.destination.com",
+            "Port": 993,
+            "UseSsl": true,
+            "Username": "user@destination.com",
+            "Password": "CHANGE_ME"
+          }
+        ]
+      }
+    ]
+  }
+}

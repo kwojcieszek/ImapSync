@@ -1,0 +1,55 @@
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+  <!-- Restart service -->
+  <div class="card">
+    <h2 class="text-sm font-bold text-slate-700 mb-2 flex items-center gap-2">
+      <svg class="w-4 h-4 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+      </svg>
+      <span x-text="t('restartTitle')"></span>
+    </h2>
+    <p class="text-xs text-slate-400 mb-5" x-text="t('restartDesc')"></p>
+    <div class="space-y-4">
+      <div>
+        <label class="label" x-text="t('serviceName')"></label>
+        <input x-model="serviceName" type="text" placeholder="imapsync" class="input" />
+      </div>
+      <p class="text-xs text-slate-400 font-mono bg-slate-50 px-3 py-2 rounded-lg"
+        x-text="restartCommandPreview()"></p>
+      <button @click="restartService()" :disabled="restartLoading" class="btn-orange btn-block">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+        </svg>
+        <span x-show="!restartLoading" x-text="t('restartBtn')"></span>
+        <span x-show="restartLoading"  x-text="t('restarting')"></span>
+      </button>
+      <div x-show="restartOutput" class="text-xs bg-slate-900 text-green-400 font-mono px-3 py-2 rounded-lg whitespace-pre-wrap" x-text="restartOutput"></div>
+      <p x-show="restartError" x-text="restartError" class="text-xs text-red-600 font-medium bg-red-50 px-3 py-2 rounded-lg"></p>
+    </div>
+  </div>
+
+  <!-- Log path configuration -->
+  <div class="card">
+    <h2 class="text-sm font-bold text-slate-700 mb-2 flex items-center gap-2">
+      <svg class="w-4 h-4 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+      </svg>
+      <span x-text="t('logPathCard')"></span>
+    </h2>
+    <p class="text-xs text-slate-400 mb-5" x-text="t('logPathDesc')"></p>
+    <div class="space-y-4">
+      <div>
+        <label class="label" x-text="t('workerLogPath')"></label>
+        <input x-model="workerLogPath" type="text" placeholder="/var/log/imapsync/worker.log" class="input" />
+      </div>
+      <button @click="saveLogPath()" :disabled="logPathSaving" class="btn-primary w-full justify-center">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+        </svg>
+        <span x-show="!logPathSaving" x-text="t('saveLogPath')"></span>
+        <span x-show="logPathSaving" x-text="t('saving')"></span>
+      </button>
+    </div>
+  </div>
+
+</div>

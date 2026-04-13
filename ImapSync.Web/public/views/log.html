@@ -1,0 +1,45 @@
+<div class="flex items-center justify-between mb-6">
+  <div class="flex items-center gap-3">
+    <select x-model.number="logLines" @change="loadLog()" class="input py-1.5 text-sm w-28">
+      <option value="50">50 linii</option>
+      <option value="100">100 linii</option>
+      <option value="200">200 linii</option>
+      <option value="500">500 linii</option>
+      <option value="1000">1000 linii</option>
+    </select>
+    <button @click="loadLog()" :disabled="logLoading" class="btn-secondary">
+      <svg class="w-4 h-4" :class="logLoading && 'animate-spin'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+      </svg>
+      <span x-text="t('logRefresh')"></span>
+    </button>
+    <button @click="toggleLogAutoRefresh()"
+      :class="logAutoRefresh ? 'btn-primary' : 'btn-secondary'">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+      </svg>
+      <span x-text="logAutoRefresh ? t('logAutoOn') : t('logAutoOff')"></span>
+    </button>
+  </div>
+  <div x-show="logAutoRefresh" class="flex items-center gap-2 text-xs text-indigo-500 font-medium">
+    <span class="w-2 h-2 rounded-full bg-indigo-500 animate-pulse inline-block"></span>
+    <span x-text="t('logLive')"></span>
+  </div>
+</div>
+
+<div x-show="logError" x-text="logError"
+  class="text-sm text-red-600 font-medium bg-red-50 border border-red-100 px-4 py-3 rounded-xl mb-4"></div>
+
+<div x-show="!logContent && !logError && !logLoading"
+  class="flex flex-col items-center justify-center py-20 text-slate-400">
+  <svg class="w-12 h-12 mb-3 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+  </svg>
+  <p class="text-sm" x-text="t('logEmpty')"></p>
+</div>
+
+<pre x-show="logContent"
+  class="text-xs bg-slate-900 text-green-300 font-mono px-5 py-4 rounded-2xl overflow-auto whitespace-pre-wrap leading-relaxed"
+  style="min-height: 400px; max-height: calc(100vh - 260px);"
+  x-text="logContent"
+  x-ref="logPre"></pre>

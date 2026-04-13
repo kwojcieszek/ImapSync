@@ -1,0 +1,58 @@
+<div class="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900">
+  <div class="w-full max-w-sm">
+    <div class="bg-white/10 backdrop-blur border border-white/20 rounded-3xl p-8 shadow-2xl">
+      <div class="text-center mb-8">
+        <div class="w-14 h-14 bg-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
+          <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+          </svg>
+        </div>
+        <h1 class="text-2xl font-bold text-white">ImapSync</h1>
+        <p class="text-slate-400 text-sm mt-1" x-text="t('appSubtitle')"></p>
+      </div>
+
+      <div class="flex justify-center mb-6">
+        <div x-data="{ open: false, options: [{v:'en',l:'🇬🇧 English'},{v:'pl',l:'🇵🇱 Polski'},{v:'de',l:'🇩🇪 Deutsch'},{v:'fr',l:'🇫🇷 Français'},{v:'es',l:'🇪🇸 Español'}] }"
+          class="relative" @click.outside="open = false">
+          <button type="button" @click="open = !open"
+            class="flex items-center gap-2 px-4 py-2 rounded-xl border border-white/20 bg-white/10 text-white text-sm font-medium hover:bg-white/20 transition-colors min-w-36">
+            <span x-text="options.find(o => o.v === lang)?.l || lang"></span>
+            <svg class="w-4 h-4 ml-auto opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+            </svg>
+          </button>
+          <div x-show="open" x-transition
+            class="absolute top-full mt-1 left-0 w-full rounded-xl overflow-hidden shadow-xl border border-white/10 bg-slate-800 z-10">
+            <template x-for="opt in options" :key="opt.v">
+              <button type="button"
+                @click="lang = opt.v; saveLang(); open = false"
+                class="w-full text-left px-4 py-2 text-sm text-slate-200 hover:bg-slate-700 transition-colors"
+                :class="lang === opt.v && 'bg-indigo-600 text-white hover:bg-indigo-500'"
+                x-text="opt.l">
+              </button>
+            </template>
+          </div>
+        </div>
+      </div>
+
+      <form @submit.prevent="login()">
+        <div class="mb-4">
+          <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1" x-text="t('username')"></label>
+          <input x-model="loginForm.username" type="text" :placeholder="t('username')" autocomplete="username"
+            class="w-full px-4 py-3 bg-white/10 border border-white/20 text-white placeholder-slate-500 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-400 text-sm" />
+        </div>
+        <div class="mb-6">
+          <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1" x-text="t('password')"></label>
+          <input x-model="loginForm.password" type="password" placeholder="••••••••" autocomplete="current-password"
+            class="w-full px-4 py-3 bg-white/10 border border-white/20 text-white placeholder-slate-500 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-400 text-sm" />
+        </div>
+        <p x-show="loginError" x-text="loginError" class="text-red-400 text-sm mb-4 text-center"></p>
+        <button type="submit" :disabled="loginLoading"
+          class="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-xl transition-colors text-sm">
+          <span x-show="!loginLoading" x-text="t('loginBtn')"></span>
+          <span x-show="loginLoading" x-text="t('loggingIn')"></span>
+        </button>
+      </form>
+    </div>
+  </div>
+</div>

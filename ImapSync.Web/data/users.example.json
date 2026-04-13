@@ -1,0 +1,11 @@
+{
+  "users": [
+    {
+      "username": "admin",
+      "passwordMd5": "<MD5_OF_YOUR_PASSWORD>",
+      "token": "<CHANGE_THIS_TO_A_RANDOM_TOKEN>",
+      "role": "admin",
+      "displayName": "Administrator"
+    }
+  ]
+}

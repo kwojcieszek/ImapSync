@@ -1,0 +1,7 @@
+<Solution>
+  <Project Path="ImapSync.Application/ImapSync.Application.csproj" />
+  <Project Path="ImapSync.Core/ImapSync.Core.csproj" />
+  <Project Path="ImapSync.Infrastructure/ImapSync.Infrastructure.csproj" />
+  <Project Path="ImapSync.Tests/ImapSync.Tests.csproj" />
+  <Project Path="ImapSync.Worker/ImapSync.Worker.csproj" />
+</Solution>
