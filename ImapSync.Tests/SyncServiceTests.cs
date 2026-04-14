@@ -495,4 +495,210 @@ public class SyncServiceTests
 
         _cacheMock.Verify(c => c.InvalidateIfDayChanged(), Times.Once);
     }
+
+    // ── Counters ──────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task SyncMailboxPair_MessagesChecked_ReflectsNumberOfMessages()
+    {
+        SetInitialized(true);
+        var pair = MakePair(Dest1);
+        SetupEmptyFolders();
+
+        _sourceConnMock
+            .Setup(c => c.GetMessagesSinceAsync("INBOX", It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new[]
+            {
+                ("<msg1@example.com>", 1u),
+                ("<msg2@example.com>", 2u),
+                ("<msg3@example.com>", 3u)
+            });
+
+        _dest1ConnMock
+            .Setup(c => c.MessageExistsAsync("INBOX", It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        var result = await _sut.SyncMailboxPairAsync(pair);
+
+        Assert.Equal(3, result.MessagesChecked);
+        Assert.Equal(3, result.MessagesSkipped);
+    }
+
+    [Fact]
+    public async Task SyncMailboxPair_FolderMissingOnDest_IncrementsFoldersCreated()
+    {
+        SetInitialized(true);
+        var pair = MakePair(Dest1);
+
+        _sourceConnMock
+            .Setup(c => c.GetFoldersAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new[] { "Sent" });
+
+        _dest1ConnMock
+            .Setup(c => c.FolderExistsAsync("Sent", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+        _dest1ConnMock
+            .Setup(c => c.EnsureFolderExistsAsync("Sent", It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        _sourceConnMock
+            .Setup(c => c.GetMessagesSinceAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Array.Empty<(string, uint)>());
+
+        var result = await _sut.SyncMailboxPairAsync(pair);
+
+        Assert.Equal(1, result.FoldersCreated);
+    }
+
+    [Fact]
+    public async Task SyncMailboxPair_FolderAlreadyExistsOnDest_DoesNotIncrementFoldersCreated()
+    {
+        SetInitialized(true);
+        var pair = MakePair(Dest1);
+
+        _sourceConnMock
+            .Setup(c => c.GetFoldersAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new[] { "Sent" });
+
+        _dest1ConnMock
+            .Setup(c => c.FolderExistsAsync("Sent", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        _sourceConnMock
+            .Setup(c => c.GetMessagesSinceAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Array.Empty<(string, uint)>());
+
+        var result = await _sut.SyncMailboxPairAsync(pair);
+
+        Assert.Equal(0, result.FoldersCreated);
+        _dest1ConnMock.Verify(
+            c => c.EnsureFolderExistsAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task SyncMailboxPair_MultipleFoldersMissingOnTwoDests_CountsEachSeparately()
+    {
+        SetInitialized(true);
+        var pair = MakePair(Dest1, Dest2);
+
+        _sourceConnMock
+            .Setup(c => c.GetFoldersAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new[] { "Sent", "Archive" });
+
+        // Both destinations are missing both folders
+        foreach (var destMock in new[] { _dest1ConnMock, _dest2ConnMock })
+        {
+            destMock.Setup(c => c.FolderExistsAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                    .ReturnsAsync(false);
+            destMock.Setup(c => c.EnsureFolderExistsAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                    .Returns(Task.CompletedTask);
+        }
+
+        _sourceConnMock
+            .Setup(c => c.GetMessagesSinceAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Array.Empty<(string, uint)>());
+
+        var result = await _sut.SyncMailboxPairAsync(pair);
+
+        // 2 folders × 2 destinations = 4
+        Assert.Equal(4, result.FoldersCreated);
+    }
+
+    // ── Exception / error handling ────────────────────────────────────────
+
+    [Fact]
+    public async Task SyncMailboxPair_FatalExceptionOnOpenSourceConnection_ReturnsResultWithError()
+    {
+        SetInitialized(true);
+        var pair = MakePair(Dest1);
+
+        _imapServiceMock
+            .Setup(s => s.OpenConnectionAsync(
+                It.Is<ImapCredentials>(c => c.Username == "src@test.com"),
+                It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("Connection refused"));
+
+        var result = await _sut.SyncMailboxPairAsync(pair);
+
+        Assert.False(result.Success);
+        Assert.Contains(result.Errors, e => e.Contains("Fatal error"));
+        _stateMock.Verify(s => s.UpdateLastSyncedAtAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+        _stateMock.Verify(s => s.MarkAsInitializedAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task SyncMailboxPair_AppendThrowsException_ReportsError_ContinuesToNextMessage()
+    {
+        SetInitialized(true);
+        var msg1 = "<msg1@example.com>";
+        var msg2 = "<msg2@example.com>";
+        var pair = MakePair(Dest1);
+        SetupEmptyFolders();
+
+        _sourceConnMock
+            .Setup(c => c.GetMessagesSinceAsync("INBOX", It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new[] { (msg1, 1u), (msg2, 2u) });
+
+        // msg1: needs to be copied, but append throws
+        _dest1ConnMock
+            .Setup(c => c.MessageExistsAsync("INBOX", msg1, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+        _sourceConnMock
+            .Setup(c => c.FetchMessageAsync("INBOX", 1u, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new MimeMessage());
+        _dest1ConnMock
+            .Setup(c => c.EnsureFolderExistsAsync("INBOX", It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+        _dest1ConnMock
+            .Setup(c => c.AppendMessageAsync("INBOX", It.IsAny<MimeMessage>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new Exception("IMAP append failed"));
+
+        // msg2: already on destination
+        _dest1ConnMock
+            .Setup(c => c.MessageExistsAsync("INBOX", msg2, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        var result = await _sut.SyncMailboxPairAsync(pair);
+
+        Assert.False(result.Success);
+        Assert.Equal(2, result.MessagesChecked);
+        Assert.Equal(1, result.MessagesSkipped); // msg2 was skipped
+        Assert.Equal(0, result.MessagesCopied);  // msg1 failed
+        _cacheMock.Verify(c => c.MarkAsSynced(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()), Times.Once); // only msg2
+    }
+
+    [Fact]
+    public async Task SyncMailboxPair_FolderCreationThrows_ReportsErrorAndContinues()
+    {
+        SetInitialized(true);
+        var pair = MakePair(Dest1);
+
+        _sourceConnMock
+            .Setup(c => c.GetFoldersAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new[] { "Broken", "Healthy" });
+
+        // "Broken" folder: FolderExistsAsync returns false, EnsureFolderExistsAsync throws
+        _dest1ConnMock
+            .Setup(c => c.FolderExistsAsync("Broken", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+        _dest1ConnMock
+            .Setup(c => c.EnsureFolderExistsAsync("Broken", It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new Exception("Cannot create folder"));
+
+        // "Healthy" folder: exists on destination
+        _dest1ConnMock
+            .Setup(c => c.FolderExistsAsync("Healthy", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        _sourceConnMock
+            .Setup(c => c.GetMessagesSinceAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Array.Empty<(string, uint)>());
+
+        var result = await _sut.SyncMailboxPairAsync(pair);
+
+        Assert.False(result.Success);
+        Assert.Equal(0, result.FoldersCreated); // Broken was not counted, Healthy existed
+        Assert.Contains(result.Errors, e => e.Contains("Broken"));
+    }
 }
